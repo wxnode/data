@@ -6,15 +6,15 @@
 #makepkg -si
 #cd ~
 #rm -rf ~/yay
-sudo dhcpcd
-sleep 15
+#sudo dhcpcd
+#sleep 15
 #yay --aururl "https://aur.tuna.tsinghua.edu.cn" --save
 #安装AMD开源显卡驱动
-yay -S --noconfirm xf86-video-amdgpu mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon
+yay -S --noconfirm xf86-video-intel mesa lib32-mesa
 #安装AMD闭源官方驱动
 #yay -S --noconfirm amdgpu-pro-libgl vulkan-amdgpu-pro
 #安装视频硬解驱动
-yay -S --noconfirm libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau lib32-mesa-vdpau
+yay -S --noconfirm intel-media-driver
 #安装X11
 #yay -S --noconfirm xorg
 #安装字体
