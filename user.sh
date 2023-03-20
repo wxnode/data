@@ -10,7 +10,7 @@
 #sleep 15
 #yay --aururl "https://aur.tuna.tsinghua.edu.cn" --save
 #安装AMD开源显卡驱动
-yay -S --noconfirm xf86-video-intel mesa lib32-mesa
+yay -S --noconfirm mesa
 #安装AMD闭源官方驱动
 #yay -S --noconfirm amdgpu-pro-libgl vulkan-amdgpu-pro
 #安装视频硬解驱动
