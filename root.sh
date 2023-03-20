@@ -11,8 +11,8 @@ grub-mkconfig -o /boot/grub/grub.cfg
 sed -i '$a[multilib]' /etc/pacman.conf
 sed -i '$aInclude = /etc/pacman.d/mirrorlist' /etc/pacman.conf
 sed -i '$a[archlinuxcn]' /etc/pacman.conf
-sed -i '$aServer = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/\$arch' /etc/pacman.conf
-#sed -i '$aServer = https://mirrors.bfsu.edu.cn/archlinuxcn/\$arch' /etc/pacman.conf
+#sed -i '$aServer = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/\$arch' /etc/pacman.conf
+sed -i '$aServer = https://mirrors.bfsu.edu.cn/archlinuxcn/\$arch' /etc/pacman.conf
 pacman -Syy
 pacman -S --noconfirm archlinuxcn-keyring
 pacman -S --noconfirm git yay
