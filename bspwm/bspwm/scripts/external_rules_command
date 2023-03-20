@@ -1,0 +1,37 @@
+#! /bin/sh
+
+# ~/.config/bspwm/try_e_r
+
+
+wid=$1
+class=$2
+instance=$3
+consequences=$4
+echo test >> /tmp/test.log
+echo -e "One group: \n \
+    window ID : ${wid},\n \
+    title : $(xtitle "${wid}"),\n \
+    class name : ${class},\n \
+    instance name : ${instance},\n \
+    intermediate consequences : ${consequences}\n\n" \
+    >> /tmp/try_e_r.log
+作者：Bronwenir
+https://www.bilibili.com/read/cv7417123/
+出处： bilibili#! /bin/sh
+
+# ~/.config/bspwm/try_e_r
+
+
+wid=$1
+class=$2
+instance=$3
+consequences=$4
+
+echo -e "One group: \n \
+    window ID : ${wid},\n \
+    title : $(xtitle "${wid}"),\n \
+    class name : ${class},\n \
+    instance name : ${instance},\n \
+    intermediate consequences : ${consequences}\n\n" \
+    >> /tmp/try_e_r.log
+

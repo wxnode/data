@@ -1,0 +1,73 @@
+#! /bin/sh
+
+# 登陆后随机更换壁纸
+feh --randomize --bg-fill /home/data/wallpapers/
+
+# 安装wmname后使java窗口可以正常调整（暂时关闭）
+#wmname LG3D
+#export _JAVA_AWT_WM_NONREPARENTING=1
+
+# 启动polybar
+"$HOME/.config/polybar/launch.sh"
+
+# 启动picom
+"$HOME/.config/picom/launch.sh"
+
+# 启动dunst
+dunst &
+
+# 启动sxhkd
+pgrep -x sxhkd >/dev/null || sxhkd &
+
+# 启动输入法
+fcitx5 &
+
+# 启动qv2ray
+qv2ray &
+
+#启动网卡状态栏
+nm-applet &
+
+# 启动锁屏
+light-locker &
+
+bspc monitor -d 1 2 3 4 5 6 7 8 9 0
+
+# 增加顶部间隙20
+bspc config top_padding 20
+
+# 窗口间隙宽度
+bspc config window_gap 5
+
+# 关注的窗口边框颜色
+bspc config focused_border_color "#353b45"
+
+# 普通窗口的边框颜色
+bspc config normal_border_color "#282c34"
+
+# 边框宽度
+bspc config border_width 2
+
+# 删除桌面单个窗口的边框
+bspc config borderless_monocle true
+
+# 窗口的默认分配比例
+bspc config split_ratio 0.50
+
+#删除桌面单个窗口的间隙
+bspc config gapless_monocle false
+
+# 设定窗口规则
+bspc rule -a Gimp desktop='^8' state=floating follow=on
+bspc rule -a firefox desktop='^1'
+bspc rule -a Spotify desktop='^5' follow=on state=fullscreen
+bspc rule -a mplayer2 state=floating
+bspc rule -a Kupfer.py focus=on
+bspc rule -a Screenkey manage=off
+
+# custom configs
+bspc config pointer_modifier mod4
+bspc config pointer_action1 move
+bspc config pointer_action2 resize_side
+bspc config pointer_action2 resize_corner
+bspc config focus_follows_pointer true
