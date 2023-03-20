@@ -16,9 +16,9 @@ sed -i '$aServer = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/\$arch' /etc
 pacman -Syy
 pacman -S --noconfirm archlinuxcn-keyring
 pacman -S --noconfirm git yay
-useradd -m -g users -G wheel jayden
-export EDITOR=nvim
-visudo
+useradd -m jayden
+bash -c 'echo "Defaults timestamp_timeout=-1" > /etc/sudoers.d/user'
+bash -c 'echo "jayden ALL=(ALL:ALL) ALL" >> /etc/sudoers.d/user'
 #echo 'Defaults env_keep += "*_proxy *_PROXY"' >> /etc/sudoers.d/05_proxy
 echo "Please enter jayden's new password"
 passwd jayden
