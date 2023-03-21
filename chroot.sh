@@ -1,4 +1,5 @@
 #!/bin/bash
+sed -i '/\# Last Check/a\Server = https://mirrors.bfsu.edu.cn/archlinuxcn/\$arch' /etc/pacman.d/mirrorlist
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 hwclock --systohc
 sed -i "24i zh_CN.UTF-8 UTF-8" /etc/locale.gen
