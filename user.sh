@@ -53,6 +53,6 @@ yay -S --noconfirm tela-icon-theme-git papirus-icon-theme
 #mkdir -p ~/Themes/Qogir-kde
 #git clone https://github.com/vinceliuice/Qogir-kde.git ~/Themes/Qogir-kde
 #bash ~/Themes/Qogir-kde/install.sh
-yay -S --noconfirm latte-dock-git yakuake gwenview plasma5-applets-eventcalendar kate cronie kcron freerdp
+yay -S --noconfirm latte-dock-git yakuake gwenview plasma5-applets-eventcalendar kate cronie kcron remmina
 #yay -S --noconfirm spectacle flameshot
 
