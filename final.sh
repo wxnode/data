@@ -20,7 +20,7 @@ yay -S --noconfirm --nodiffmenu --removemake sddm-sugar-candy-git
 #yay -S --noconfirm --nodiffmenu --removemake mcmojave-kde-theme-git
 yay -S --noconfirm --nodiffmenu --removemake whitesur-kde-theme-git
 yay -S --noconfirm --nodiffmenu --removemake chromeos-kde-theme-git
-yay -S --noconfirm nordic-kde-git kvantum-theme-nordic-git
+#yay -S --noconfirm nordic-kde-git kvantum-theme-nordic-git
 #yay -S --noconfirm --nodiffmenu --removemake aritim-dark-kde
 
 #yay -Sa --noconfirm --nodiffmenu --removemake plasma5-applets-virtual-desktop-bar-git
