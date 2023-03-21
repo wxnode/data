@@ -1,4 +1,5 @@
 #!/bin/bash
+#sed -i '/\# Last Check/a\Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/\$arch' /etc/pacman.d/mirrorlist
 sed -i '/\# Last Check/a\Server = https://mirrors.bfsu.edu.cn/archlinuxcn/\$arch' /etc/pacman.d/mirrorlist
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 hwclock --systohc
