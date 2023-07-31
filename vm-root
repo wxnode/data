@@ -17,7 +17,7 @@ pacman -S --noconfirm archlinuxcn-keyring
 pacman -S --noconfirm git yay
 useradd -m -G wheel -s /bin/bash jayden
 bash -c 'echo "Defaults timestamp_timeout=-1" > /etc/sudoers.d/user-init'
-#bash -c 'echo "jayden ALL=(ALL:ALL) ALL" >> /etc/sudoers.d/user'
+bash -c 'echo "jayden ALL=(ALL:ALL) ALL" >> /etc/sudoers.d/user-init'
 #echo 'Defaults env_keep += "*_proxy *_PROXY"' >> /etc/sudoers.d/05_proxy
 echo "Please enter jayden's new password"
 passwd jayden
