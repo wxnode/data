@@ -1,0 +1,15 @@
+#!/bin/bash
+systemctl stop reflector.service
+timedatectl set-ntp true
+mkfs.fat -F 32 /dev/sda1
+mkfs.ext4 /dev/sda2
+mkfs.ext4 /dev/sdb1
+mount /dev/sda2 /mnt
+mkdir /mnt/boot
+mkdir /mnt/home
+mount /dev/sda1 /mnt/boot
+mount /dev/sdb1 /mnt/home
+sed -i '/# Last Check/a\Server = https://mirrors.tuna.tsinghua.edu.cn/archlinux/\$repo/os/\$arch' /etc/pacman.d/mirrorlist
+pacstrap /mnt base base-devel linux linux-firmware dhcpcd
+genfstab -U /mnt >> /mnt/etc/fstab
+arch-chroot /mnt
