@@ -1,0 +1,16 @@
+#!/bin/bash
+ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+hwclock --systohc
+sed -i "s/#zh_CN.UTF-8 UTF-8/zh_CN.UTF-8 UTF-8/g" /etc/locale.gen
+sed -i "s/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/g" /etc/locale.gen
+locale-gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+echo "xNode-Arch" > /etc/hostname
+echo "127.0.0.1 localhost" >> /etc/hosts
+echo "::1       localhost" >> /etc/hosts
+echo "127.0.0.1 xNode-Arch.localdomain xNode-Arch" >> /etc/hosts
+pacman -S --noconfirm neovim intel-ucode grub efibootmgr
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+sed -i "s/loglevel=3 quiet/loglevel=5 nowatchdog/" /etc/default/grub
+grub-mkconfig -o /boot/grub/grub.cfg
+passwd root
