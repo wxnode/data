@@ -1,0 +1,387 @@
+#!/bin/bash
+# Arch Linux 安装脚本 - 双 M.2 固态盘 + Btrfs + systemd-boot
+# 硬件配置: AMD 5700X + RX 6800XT + 2x 1TB M.2 SSD
+# 系统盘和数据盘分离,支持重装系统时保留 home 和数据
+
+set -e
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# 打印带颜色的消息
+print_msg() {
+    echo -e "${GREEN}==>${NC} $1"
+}
+
+print_warn() {
+    echo -e "${YELLOW}警告:${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}错误:${NC} $1"
+}
+
+# 确认继续
+confirm_continue() {
+    echo -e "${YELLOW}$1${NC}"
+    read -p "是否继续? (yes/no): " response
+    if [[ ! "$response" =~ ^[Yy][Ee][Ss]$ ]]; then
+        print_error "用户取消操作"
+        exit 1
+    fi
+}
+
+# ==================== 配置部分 ====================
+print_msg "Arch Linux 安装脚本配置"
+echo "================================"
+
+# 磁盘配置 (请根据实际情况修改)
+SYSTEM_DISK="/dev/nvme0n1"  # 系统盘
+DATA_DISK="/dev/nvme1n1"    # 数据/游戏盘
+
+# 安装模式选择
+echo "请选择安装模式:"
+echo "1) 全新安装 (格式化所有数据,包括 home 和 data)"
+echo "2) 重装系统 (仅清除 root 和 EFI,保留 home 和 data)"
+read -p "选择 [1/2]: " INSTALL_MODE
+
+# 用户配置
+read -p "输入用户名: " USERNAME
+read -sp "输入用户密码: " USER_PASSWORD
+echo
+read -sp "输入 root 密码: " ROOT_PASSWORD
+echo
+read -p "输入主机名: " HOSTNAME
+
+# 时区和区域设置
+TIMEZONE="Asia/Shanghai"
+LOCALE="en_US.UTF-8"
+
+echo "================================"
+echo "配置摘要:"
+echo "安装模式: $([ "$INSTALL_MODE" == "1" ] && echo "全新安装" || echo "重装系统(保留数据)")"
+echo "系统盘: ${SYSTEM_DISK}"
+echo "数据盘: ${DATA_DISK}"
+echo "用户名: ${USERNAME}"
+echo "主机名: ${HOSTNAME}"
+echo "时区: ${TIMEZONE}"
+echo "================================"
+
+if [ "$INSTALL_MODE" == "1" ]; then
+    confirm_continue "警告: 这将格式化 ${SYSTEM_DISK} 和 ${DATA_DISK} 的所有数据!"
+else
+    confirm_continue "警告: 这将格式化 ${SYSTEM_DISK} 的 root 和 EFI 分区,但保留 home 和 data!"
+fi
+
+# ==================== 系统准备 ====================
+print_msg "更新系统时间"
+timedatectl set-ntp true
+
+# ==================== 磁盘分区 - 系统盘 ====================
+if [ "$INSTALL_MODE" == "1" ]; then
+    # 全新安装 - 完全格式化系统盘
+    print_msg "全新安装: 对系统盘进行完整分区: ${SYSTEM_DISK}"
+    
+    wipefs -af "${SYSTEM_DISK}"
+    sgdisk --zap-all "${SYSTEM_DISK}"
+    
+    # 创建 GPT 分区表和分区
+    sgdisk -n 1:0:+1G -t 1:ef00 -c 1:"EFI" "${SYSTEM_DISK}"
+    sgdisk -n 2:0:0 -t 2:8300 -c 2:"root" "${SYSTEM_DISK}"
+    
+    partprobe "${SYSTEM_DISK}"
+    sleep 2
+    
+    # 格式化 EFI 和 Root 分区
+    print_msg "格式化 EFI 和 Root 分区"
+    mkfs.fat -F32 "${SYSTEM_DISK}p1"
+    mkfs.btrfs -f -L arch_root "${SYSTEM_DISK}p2"
+    
+else
+    # 重装系统 - 仅清除 root 子卷和 EFI
+    print_msg "重装系统模式: 保留 home 和 data,仅清除 root 和 EFI"
+    
+    # 检查分区是否存在
+    if [ ! -b "${SYSTEM_DISK}p1" ] || [ ! -b "${SYSTEM_DISK}p2" ]; then
+        print_error "未找到现有分区! 请使用全新安装模式(选项 1)"
+        exit 1
+    fi
+    
+    # 重新格式化 EFI 分区
+    print_msg "重新格式化 EFI 分区"
+    wipefs -af "${SYSTEM_DISK}p1"
+    mkfs.fat -F32 "${SYSTEM_DISK}p1"
+    
+    # 挂载 Btrfs 并删除旧的 root 子卷
+    print_msg "删除旧的 @root 子卷"
+    mount "${SYSTEM_DISK}p2" /mnt
+    
+    # 检查是否存在 @root 子卷
+    if btrfs subvolume list /mnt | grep -q "@root"; then
+        btrfs subvolume delete /mnt/@root
+        print_msg "@root 子卷已删除"
+    else
+        print_warn "未找到 @root 子卷,将创建新子卷"
+    fi
+    
+    umount /mnt
+fi
+
+# ==================== 磁盘分区 - 数据盘 ====================
+if [ "$INSTALL_MODE" == "1" ]; then
+    # 全新安装 - 询问是否格式化数据盘
+    if [[ -b "${DATA_DISK}" ]]; then
+        print_warn "检测到数据盘 ${DATA_DISK}"
+        read -p "是否格式化数据盘? (yes/no): " format_data
+        if [[ "$format_data" =~ ^[Yy][Ee][Ss]$ ]]; then
+            print_msg "格式化数据盘: ${DATA_DISK}"
+            wipefs -af "${DATA_DISK}"
+            sgdisk --zap-all "${DATA_DISK}"
+            sgdisk -n 1:0:0 -t 1:8300 -c 1:"data" "${DATA_DISK}"
+            partprobe "${DATA_DISK}"
+            sleep 2
+            
+            # 格式化数据盘
+            mkfs.btrfs -f -L arch_data "${DATA_DISK}p1"
+        fi
+    fi
+else
+    # 重装系统模式 - 不处理数据盘
+    print_msg "重装模式: 跳过数据盘处理"
+fi
+
+# ==================== 创建 Btrfs 子卷 - 系统盘 ====================
+print_msg "创建/检查 Btrfs 子卷结构 (系统盘)"
+
+# 挂载根文件系统
+mount "${SYSTEM_DISK}p2" /mnt
+
+if [ "$INSTALL_MODE" == "1" ]; then
+    # 全新安装 - 创建所有子卷
+    print_msg "全新安装: 创建所有子卷"
+    btrfs subvolume create /mnt/@root
+    btrfs subvolume create /mnt/@home
+else
+    # 重装系统 - 只创建 @root,检查 @home 是否存在
+    print_msg "重装模式: 创建新的 @root 子卷"
+    btrfs subvolume create /mnt/@root
+    
+    if ! btrfs subvolume list /mnt | grep -q "@home"; then
+        print_warn "@home 子卷不存在,将创建新的 @home"
+        btrfs subvolume create /mnt/@home
+    else
+        print_msg "保留现有 @home 子卷"
+    fi
+fi
+
+# 卸载
+umount /mnt
+
+# ==================== 创建 Btrfs 子卷 - 数据盘 ====================
+if [[ -b "${DATA_DISK}p1" ]]; then
+    print_msg "检查数据盘子卷结构"
+    mount "${DATA_DISK}p1" /mnt
+    
+    if [ "$INSTALL_MODE" == "1" ]; then
+        # 全新安装 - 创建数据子卷
+        if ! btrfs subvolume list /mnt | grep -q "@data"; then
+            print_msg "创建 @data 子卷"
+            btrfs subvolume create /mnt/@data
+        fi
+    else
+        # 重装系统 - 保留现有数据
+        if ! btrfs subvolume list /mnt | grep -q "@data"; then
+            print_warn "@data 子卷不存在,将创建新的 @data"
+            btrfs subvolume create /mnt/@data
+        else
+            print_msg "保留现有 @data 子卷"
+        fi
+    fi
+    
+    umount /mnt
+fi
+
+# ==================== 挂载文件系统 ====================
+print_msg "挂载文件系统"
+
+# Btrfs 挂载选项 (针对 NVMe SSD 优化)
+BTRFS_OPTS="defaults,noatime,compress=zstd:1,ssd,discard=async,space_cache=v2"
+
+# 挂载 root 子卷
+mount -o ${BTRFS_OPTS},subvol=@root "${SYSTEM_DISK}p2" /mnt
+
+# 创建挂载点
+mkdir -p /mnt/{boot,home}
+
+# 挂载 EFI 分区
+mount "${SYSTEM_DISK}p1" /mnt/boot
+
+# 挂载 home 子卷
+mount -o ${BTRFS_OPTS},subvol=@home "${SYSTEM_DISK}p2" /mnt/home
+
+# 挂载数据盘
+if [[ -b "${DATA_DISK}p1" ]]; then
+    mkdir -p /mnt/data
+    mount -o ${BTRFS_OPTS},subvol=@data "${DATA_DISK}p1" /mnt/data
+fi
+
+# ==================== 选择镜像源 ====================
+print_msg "配置 pacman 镜像源"
+
+# 备份原始 mirrorlist
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+
+# 使用中国镜像源
+cat > /etc/pacman.d/mirrorlist << 'EOF'
+Server = https://mirrors.tuna.tsinghua.edu.cn/archlinux/$repo/os/$arch
+Server = https://mirrors.ustc.edu.cn/archlinux/$repo/os/$arch
+Server = https://mirrors.aliyun.com/archlinux/$repo/os/$arch
+EOF
+
+# ==================== 安装基本系统 ====================
+print_msg "安装基本系统 (精简配置)"
+
+# 核心包 + AMD 驱动 + 基本工具
+pacstrap -K /mnt \
+    base \
+    linux linux-firmware \
+    amd-ucode \
+    btrfs-progs \
+    neovim \
+    networkmanager \
+    sudo \
+    man-db man-pages
+
+# ==================== 生成 fstab ====================
+print_msg "生成 fstab"
+genfstab -U /mnt >> /mnt/etc/fstab
+
+# ==================== 进入 chroot 环境配置 ====================
+print_msg "配置系统 (chroot)"
+
+arch-chroot /mnt /bin/bash << EOCHROOT
+
+# 设置时区
+ln -sf /usr/share/zoneinfo/${TIMEZONE} /etc/localtime
+hwclock --systohc
+
+# 配置本地化
+echo "${LOCALE} UTF-8" >> /etc/locale.gen
+locale-gen
+echo "LANG=${LOCALE}" > /etc/locale.conf
+
+# 配置主机名
+echo "${HOSTNAME}" > /etc/hostname
+
+cat > /etc/hosts << EOF
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   ${HOSTNAME}.localdomain ${HOSTNAME}
+EOF
+
+# 设置 root 密码
+echo "root:${ROOT_PASSWORD}" | chpasswd
+
+# 创建用户
+useradd -m -G wheel -s /bin/bash ${USERNAME}
+echo "${USERNAME}:${USER_PASSWORD}" | chpasswd
+
+# 配置 sudo - 写入单独文件
+echo "${USERNAME} ALL=(ALL:ALL) ALL" > /etc/sudoers.d/${USERNAME}
+chmod 440 /etc/sudoers.d/${USERNAME}
+
+# 启用 NetworkManager
+systemctl enable NetworkManager
+
+# 配置 mkinitcpio (添加 btrfs 模块)
+sed -i 's/^MODULES=.*/MODULES=(btrfs)/' /etc/mkinitcpio.conf
+
+# 重新生成 initramfs
+mkinitcpio -P
+
+# ==================== 安装和配置 systemd-boot ====================
+echo "安装 systemd-boot"
+bootctl install
+
+# 获取 root 分区 UUID
+ROOT_UUID=\$(blkid -s UUID -o value ${SYSTEM_DISK}p2)
+
+# 创建启动加载器配置
+cat > /boot/loader/loader.conf << EOF
+default arch.conf
+timeout 3
+console-mode max
+editor no
+EOF
+
+# 创建 Arch Linux 启动项
+cat > /boot/loader/entries/arch.conf << EOF
+title   Arch Linux
+linux   /vmlinuz-linux
+initrd  /amd-ucode.img
+initrd  /initramfs-linux.img
+options root=UUID=\${ROOT_UUID} rootflags=subvol=@root rw quiet
+EOF
+
+# 创建 Arch Linux 备用启动项 (使用 fallback initramfs)
+cat > /boot/loader/entries/arch-fallback.conf << EOF
+title   Arch Linux (fallback)
+linux   /vmlinuz-linux
+initrd  /amd-ucode.img
+initrd  /initramfs-linux-fallback.img
+options root=UUID=\${ROOT_UUID} rootflags=subvol=@root rw
+EOF
+
+EOCHROOT
+
+# ==================== 完成安装 ====================
+print_msg "安装完成!"
+
+echo "================================"
+echo "系统安装总结:"
+echo "--------------------------------"
+echo "引导方式: systemd-boot (UEFI)"
+echo "文件系统: Btrfs"
+echo "子卷布局:"
+echo "  - ${SYSTEM_DISK}p2 @root  -> /"
+echo "  - ${SYSTEM_DISK}p2 @home  -> /home"
+if [[ -b "${DATA_DISK}p1" ]]; then
+    echo "  - ${DATA_DISK}p1 @data  -> /data"
+fi
+echo "--------------------------------"
+echo "Btrfs 优化:"
+echo "  - 压缩: zstd:1 (最快速度)"
+echo "  - SSD 优化: ssd,discard=async"
+echo "  - 缓存: space_cache=v2"
+echo "  - 禁用访问时间: noatime"
+echo "--------------------------------"
+echo "用户信息:"
+echo "  - 用户名: ${USERNAME}"
+echo "  - Sudo 配置: /etc/sudoers.d/${USERNAME}"
+echo "--------------------------------"
+echo "重装系统时保留数据:"
+echo "  方法: 运行脚本时选择模式 2"
+echo "  1. 自动保留 ${DATA_DISK} (数据盘)"
+echo "  2. 自动保留 @home 子卷"
+echo "  3. 自动删除并重建 @root 子卷"
+echo "  4. 自动重新格式化 EFI 分区"
+echo "================================"
+
+echo ""
+print_warn "后续步骤:"
+echo "1. 退出 chroot: exit"
+echo "2. 卸载分区: umount -R /mnt"
+echo "3. 重启系统: reboot"
+echo "4. 移除安装介质并从硬盘启动"
+echo ""
+echo "首次登录后建议操作:"
+echo "1. 连接网络: nmcli device wifi connect <SSID> password <密码>"
+echo "2. 同步软件包数据库: sudo pacman -Syu"
+echo "3. 安装显卡驱动:"
+echo "   sudo pacman -S mesa xf86-video-amdgpu vulkan-radeon"
+echo "4. 安装其他需要的软件"
+echo ""
+print_msg "祝你使用愉快!"
